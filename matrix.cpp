@@ -1,13 +1,15 @@
 #ifndef __QS_MATRIX_CPP
 #define __QS_MATRIX_CPP
+
 #include "matrix.h"
 #include <iostream>
-// Конструктоор с параметром                                                                                                                                                 
+
+// Конструктоор с параметром
 template<typename T>
-QSMatrix<T>::QSMatrix(unsigned _rows, unsigned _cols, const T& _initial) {
-    mat.resize(_rows);
-    for (unsigned i = 0; i<mat.size(); i++) {
-        mat[i].resize(_cols, _initial);
+QSMatrix<T>::QSMatrix(unsigned _rows, unsigned _cols, const T &_initial) {
+    storage = new T *[_rows];
+    for (unsigned i = 0; i < _rows; i++) {
+        storage[i] = new T[_cols];
     }
     rows = _rows;
     cols = _cols;
@@ -15,20 +17,31 @@ QSMatrix<T>::QSMatrix(unsigned _rows, unsigned _cols, const T& _initial) {
 
 // Конструктор копирования                                                                                                                                                
 template<typename T>
-QSMatrix<T>::QSMatrix(const QSMatrix<T>& rhs) {
-    mat = rhs.mat;
+QSMatrix<T>::QSMatrix(const QSMatrix<T> &rhs) {
+    storage = rhs.storage;
     rows = rhs.get_rows();
     cols = rhs.get_cols();
 }
 
+template<typename T>
+void QSMatrix<T>::clear_storage(T **storage, int rows) {
+    for (size_t i = 0; i < rows; i++) {
+        delete[] storage[i];
+    }
+    delete[] storage;
+}
+
 // Деструктор                                                                                                                                                      
 template<typename T>
-QSMatrix<T>::~QSMatrix() {}
+QSMatrix<T>::~QSMatrix() {
+    clear_storage(storage, rows);
+}
+
+
 
 //перегруженный оператор вывода
 template<typename J>
-std::ostream& operator<< (std::ostream &out, const QSMatrix<J> &mat)
-{
+std::ostream &operator<<(std::ostream &out, const QSMatrix<J> &mat) {
     for (unsigned i = 0; i < mat.get_rows(); i++) {
         for (unsigned j = 0; j < mat.get_cols(); j++) {
             out << mat(i, j) << ", ";
@@ -37,14 +50,12 @@ std::ostream& operator<< (std::ostream &out, const QSMatrix<J> &mat)
     }
     return out;
 }
+
 //перегруженный оператор ввода
 template<typename J>
-std::istream& operator>> (std::istream &in, QSMatrix<J> &mat)
-{
-    for (unsigned i = 0; i < mat.get_rows(); i++)
-    {
-        for (unsigned j = 0; j < mat.get_cols(); j++)
-        {
+std::istream &operator>>(std::istream &in, QSMatrix<J> &mat) {
+    for (unsigned i = 0; i < mat.get_rows(); i++) {
+        for (unsigned j = 0; j < mat.get_cols(); j++) {
             in >> mat(i, j);
         }
     }
@@ -53,21 +64,21 @@ std::istream& operator>> (std::istream &in, QSMatrix<J> &mat)
 
 // Оператор присваивания                                                                                                                                                      
 template<typename T>
-QSMatrix<T>& QSMatrix<T>::operator=(const QSMatrix<T>& rhs) {
+QSMatrix<T> &QSMatrix<T>::operator=(const QSMatrix<T> &rhs) {
     if (&rhs == this)
         return *this;
-
+    clear_storage(storage, rows);
     unsigned new_rows = rhs.get_rows();
     unsigned new_cols = rhs.get_cols();
 
-    mat.resize(new_rows);
-    for (unsigned i = 0; i<mat.size(); i++) {
-        mat[i].resize(new_cols);
+    storage = new T* [new_rows];
+    for (unsigned i = 0; i < new_rows; i++) {
+        storage[i] = new T[new_cols];
     }
 
-    for (unsigned i = 0; i<new_rows; i++) {
-        for (unsigned j = 0; j<new_cols; j++) {
-            mat[i][j] = rhs(i, j);
+    for (unsigned i = 0; i < new_rows; i++) {
+        for (unsigned j = 0; j < new_cols; j++) {
+            storage[i][j] = rhs(i, j);
         }
     }
     rows = new_rows;
@@ -78,12 +89,12 @@ QSMatrix<T>& QSMatrix<T>::operator=(const QSMatrix<T>& rhs) {
 
 // Сложение двух матриц (добавление)                                                                                                                                            
 template<typename T>
-QSMatrix<T> QSMatrix<T>::operator+(const QSMatrix<T>& rhs) {
+QSMatrix<T> QSMatrix<T>::operator+(const QSMatrix<T> &rhs) {
     QSMatrix result(rows, cols, 0.0);
 
-    for (unsigned i = 0; i<rows; i++) {
-        for (unsigned j = 0; j<cols; j++) {
-            result(i, j) = this->mat[i][j] + rhs(i, j);
+    for (unsigned i = 0; i < rows; i++) {
+        for (unsigned j = 0; j < cols; j++) {
+            result(i, j) = this->storage[i][j] + rhs(i, j);
         }
     }
 
@@ -92,15 +103,15 @@ QSMatrix<T> QSMatrix<T>::operator+(const QSMatrix<T>& rhs) {
 
 // Левое умножение матрицы н                                                                                                                           
 template<typename T>
-QSMatrix<T> QSMatrix<T>::operator*(const QSMatrix<T>& rhs) {
+QSMatrix<T> QSMatrix<T>::operator*(const QSMatrix<T> &rhs) {
     unsigned rows = rhs.get_rows();
     unsigned cols = rhs.get_cols();
     QSMatrix result(rows, cols, 0.0);
 
-    for (unsigned i = 0; i<rows; i++) {
-        for (unsigned j = 0; j<cols; j++) {
-            for (unsigned k = 0; k<rows; k++) {
-                result(i, j) += this->mat[i][k] * rhs(k, j);
+    for (unsigned i = 0; i < rows; i++) {
+        for (unsigned j = 0; j < cols; j++) {
+            for (unsigned k = 0; k < rows; k++) {
+                result(i, j) += this->storage[i][k] * rhs(k, j);
             }
         }
     }
@@ -110,7 +121,7 @@ QSMatrix<T> QSMatrix<T>::operator*(const QSMatrix<T>& rhs) {
 
 // Суммарное умножение                                                                                                                  
 template<typename T>
-QSMatrix<T>& QSMatrix<T>::operator*=(const QSMatrix<T>& rhs) {
+QSMatrix<T> &QSMatrix<T>::operator*=(const QSMatrix<T> &rhs) {
     QSMatrix result = (*this) * rhs;
     (*this) = result;
     return *this;
@@ -118,12 +129,12 @@ QSMatrix<T>& QSMatrix<T>::operator*=(const QSMatrix<T>& rhs) {
 
 // Матричное скалярное сложение                                                                                                                                                 
 template<typename T>
-QSMatrix<T> QSMatrix<T>::operator+(const T& rhs) {
+QSMatrix<T> QSMatrix<T>::operator+(const T &rhs) {
     QSMatrix result(rows, cols, 0.0);
 
-    for (unsigned i = 0; i<rows; i++) {
-        for (unsigned j = 0; j<cols; j++) {
-            result(i, j) = this->mat[i][j] + rhs;
+    for (unsigned i = 0; i < rows; i++) {
+        for (unsigned j = 0; j < cols; j++) {
+            result(i, j) = this->storage[i][j] + rhs;
         }
     }
 
@@ -132,12 +143,12 @@ QSMatrix<T> QSMatrix<T>::operator+(const T& rhs) {
 
 // Матричное / скалярное умножение                                                                                                                                       
 template<typename T>
-QSMatrix<T> QSMatrix<T>::operator*(const T& rhs) {
+QSMatrix<T> QSMatrix<T>::operator*(const T &rhs) {
     QSMatrix result(rows, cols, 0.0);
 
-    for (unsigned i = 0; i<rows; i++) {
-        for (unsigned j = 0; j<cols; j++) {
-            result(i, j) = this->mat[i][j] * rhs;
+    for (unsigned i = 0; i < rows; i++) {
+        for (unsigned j = 0; j < cols; j++) {
+            result(i, j) = this->storage[i][j] * rhs;
         }
     }
 
@@ -146,12 +157,12 @@ QSMatrix<T> QSMatrix<T>::operator*(const T& rhs) {
 
 // Умножим матрицу на вектор                                                                                                                                       
 template<typename T>
-std::vector<T> QSMatrix<T>::operator*(const std::vector<T>& rhs) {
-    std::vector<T> result(rhs.size(), 0.0);
+T* QSMatrix<T>::operator*(const T* rhs) {
+    T* result = new T[sizeof(rhs)/sizeof(T)];
 
-    for (unsigned i = 0; i<rows; i++) {
-        for (unsigned j = 0; j<cols; j++) {
-            result[i] = this->mat[i][j] * rhs[j];
+    for (unsigned i = 0; i < rows; i++) {
+        for (unsigned j = 0; j < cols; j++) {
+            result[i] = this->storage[i][j] * rhs[j];
         }
     }
 
@@ -160,14 +171,14 @@ std::vector<T> QSMatrix<T>::operator*(const std::vector<T>& rhs) {
 
 // Доступ к отдельным элементам                                                                                                                                         
 template<typename T>
-T& QSMatrix<T>::operator()(const unsigned& row, const unsigned& col) {
-    return this->mat[row][col];
+T &QSMatrix<T>::operator()(const unsigned &row, const unsigned &col) {
+    return this->storage[row][col];
 }
 
 // Доступ к отдельным элементам (const)                                                                                                                                  
 template<typename T>
-const T& QSMatrix<T>::operator()(const unsigned& row, const unsigned& col) const {
-    return this->mat[row][col];
+const T &QSMatrix<T>::operator()(const unsigned &row, const unsigned &col) const {
+    return this->storage[row][col];
 }
 
 // Получить количество строк матрицы                                                                                                                                    
@@ -181,16 +192,18 @@ template<typename T>
 unsigned QSMatrix<T>::get_cols() const {
     return this->cols;
 }
+
 //Заполняем матрицу рандомными двузначными числами
 template<typename T>
 QSMatrix<T> QSMatrix<T>::RandomSet() {
     QSMatrix result(rows, cols, 0.0);
 
-    for (unsigned i = 0; i<rows; i++) {
-        for (unsigned j = 0; j<cols; j++) {
-            result(i,j) = rand()%100;
+    for (unsigned i = 0; i < rows; i++) {
+        for (unsigned j = 0; j < cols; j++) {
+            result(i, j) = rand() % 100;
         }
     }
     return result;
 }
+
 #endif
